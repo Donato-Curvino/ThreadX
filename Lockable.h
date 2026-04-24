@@ -90,6 +90,8 @@ private:
 
 protected:
     mutable Mtx mtx;
+
+    Locked<T, Mtx> lock(std::adopt_lock_t) { return Locked<T, Mtx>(value, mtx, std::adopt_lock); }
 };
 
 } // Close namespace
