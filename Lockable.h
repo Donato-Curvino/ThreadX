@@ -79,6 +79,7 @@ public:
     Locked<T, Mtx> lock() { return Locked(value, mtx); }
 
     std::optional<Locked<T, Mtx>> try_lock()
+        requires requires(Mtx m) { m.try_lock(); }
     {
         std::unique_lock lock(mtx, std::try_to_lock);
         return lock.owns_lock() ? std::make_optional<Locked<T, Mtx>>(value, std::move(lock)) : std::nullopt;
