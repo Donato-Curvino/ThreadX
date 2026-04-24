@@ -6,12 +6,16 @@
 
 #include <mutex>
 
+namespace threadx {
+
 template <typename T, class Mtx = std::mutex>
     requires requires { typename std::unique_lock<Mtx>; }
 class Locked
 {
 public:
-    explicit Locked(T& ref, Mtx mtx) : value_ref(ref), lock(mtx) { }
+    Locked(T& ref, Mtx& mtx) : value_ref(ref), lock(mtx) { }
+
+    Locked(T& ref, std::unique_lock<Mtx>&& mtx) : value_ref(ref), lock(mtx) { } // TODO: do I need to use std::move?
 
     // This class may be moved but not copied because it holds a unique lock
     Locked(const Locked&)            = delete;
@@ -44,15 +48,20 @@ public:
     Lockable() = default;
 
     template <typename... Args>
-    explicit Lockable(Args&&... args) : value(std::forward<Args>(args)...) { }
+        requires std::constructible_from<T, Args...>
+    Lockable(Args&&... args) : value(std::forward<Args>(args)...) { }
 
-    // Locks while copying and moving
+    // Lock while copying and moving
     Lockable(const Lockable& other) { std::lock_guard(other.mtx), value = other.value; }
     Lockable& operator=(const Lockable& other)
     {
-        if (this != &other) {
-            std::scoped_lock(mtx, other.mtx), value = other.value;
-        }
+        if (this != &other) std::scoped_lock(mtx, other.mtx), value = other.value;
+        return *this;
+    }
+    template <typename T2> requires std::assignable_from<T, T2>
+    Lockable& operator=(T2&& other)
+    {
+        if (this != &other) std::lock_guard(other.mtx), value = std::forward<T2>(other.value);
         return *this;
     }
 
@@ -70,7 +79,9 @@ public:
 
 private:
     T value;
-    Mtx mtx;
+
+protected:
+    mutable Mtx mtx;
 };
 
-
+} // Close namespace
