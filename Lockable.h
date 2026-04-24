@@ -5,6 +5,7 @@
 #pragma once
 
 #include <mutex>
+#include <optional>
 
 namespace threadx {
 
@@ -15,7 +16,7 @@ class Locked
 public:
     Locked(T& ref, Mtx& mtx) : value_ref(ref), lock(mtx) { }
 
-    Locked(T& ref, std::unique_lock<Mtx>&& mtx) : value_ref(ref), lock(mtx) { } // TODO: do I need to use std::move?
+    Locked(T& ref, std::unique_lock<Mtx>&& l) : value_ref(ref), lock(std::move(l)) { }
 
     // This class may be moved but not copied because it holds a unique lock
     Locked(const Locked&)            = delete;
@@ -76,6 +77,12 @@ public:
 
 
     Locked<T, Mtx> lock() { return Locked(value, mtx); }
+
+    std::optional<Locked<T, Mtx>> try_lock()
+    {
+        std::unique_lock lock(mtx, std::try_to_lock);
+        return lock.owns_lock() ? std::make_optional<Locked<T, Mtx>>(value, std::move(lock)) : std::nullopt;
+    }
 
 private:
     T value;

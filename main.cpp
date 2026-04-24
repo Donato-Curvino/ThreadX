@@ -12,5 +12,7 @@ int main() {
     str2 = str1;
     str3 = std::move(str1);
 
+    std::cout << std::boolalpha;
     std::cout << *str2.lock() << ' ' << *str3.lock() << std::endl;
+    std::cout << str.try_lock().has_value() << ' ' << str.try_lock().has_value() << std::endl;
 }
