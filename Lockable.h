@@ -27,13 +27,13 @@ public:
     ~Locked() = default;
 
     template <typename L>
-        requires requires(L l, Mtx mtx) { std::unique_lock(mtx, l); }
+        requires requires(Mtx mtx, L l) { std::unique_lock(mtx, l); }
     explicit Locked(T& ref, Mtx mtx, L lock_strategy) : value_ref(ref), lock(mtx, lock_strategy) { }
 
     T& operator*()        { return value_ref; }
     T& operator*()  const { return value_ref; }
-    T& operator->()       { return value_ref; }
-    T& operator->() const { return value_ref; }
+    T* operator->()       { return &value_ref; }
+    T* operator->() const { return &value_ref; }
 
 private:
     T& value_ref;
