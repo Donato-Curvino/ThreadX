@@ -4,6 +4,7 @@
 
 #pragma once
 #include <condition_variable>
+#include <functional>
 
 #include "Lockable.h"
 
@@ -29,20 +30,35 @@ public:
 
     locked_type wait()
     {
-        std::unique_lock lock(lockable_type::mtx);
+        locked_type lockedValue(lockable_type::mtx);
+        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
         cv.wait(lock);
         lock.release();
-        return lock(std::adopt_lock);
+        return lockedValue;
     }
 
     template <typename Pred>
         requires std::same_as<bool, std::invoke_result_t<Pred>>
     locked_type wait(Pred&& pred)
     {
-        std::unique_lock lock(lockable_type::mtx);
-        cv.wait(lock, std::forward<Pred>(pred));  // TODO: what if pred needs accessed to lockable_type::value?
+        locked_type lockedValue(lockable_type::mtx);
+        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
+        cv.wait(lock, std::forward<Pred>(pred));
         lock.release();
-        return lock(std::adopt_lock);
+        return lockedValue;
+    }
+
+    template <typename Pred>
+        requires std::same_as<bool, std::invoke_result_t<Pred, T>>
+    locked_type wait(Pred&& pred)
+    {
+        locked_type lockedValue = lockable_type::lock();
+        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
+
+        while (!std::invoke(pred, lockedValue)) { cv.wait(lock); }
+
+        lock.release();
+        return lockedValue;
     }
 
     void notify_one() { cv.notify_one(); }

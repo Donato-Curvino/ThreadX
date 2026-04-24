@@ -91,7 +91,7 @@ private:
 protected:
     mutable Mtx mtx;
 
-    Locked<T, Mtx> lock(std::adopt_lock_t) { return Locked<T, Mtx>(value, mtx, std::adopt_lock); }
+    // Locked<T, Mtx> lock(auto lock_strategy) { return Locked<T, Mtx>(value, mtx, lock_strategy); }
 };
 
 } // Close namespace
