@@ -30,35 +30,25 @@ public:
 
     locked_type wait()
     {
-        locked_type lockedValue(lockable_type::mtx);
-        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
+        std::unique_lock lock(lockable_type::mtx);
         cv.wait(lock);
-        lock.release();
-        return lockedValue;
+        return {lockable_type::value, std::move(lock)};
     }
 
-    template <typename Pred>
-        requires std::same_as<bool, std::invoke_result_t<Pred>>
+    template <std::predicate Pred>
     locked_type wait(Pred&& pred)
     {
-        locked_type lockedValue(lockable_type::mtx);
-        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
+        std::unique_lock lock(lockable_type::mtx);
         cv.wait(lock, std::forward<Pred>(pred));
-        lock.release();
-        return lockedValue;
+        return {lockable_type::value, std::move(lock)};
     }
 
-    template <typename Pred>
-        requires std::same_as<bool, std::invoke_result_t<Pred, T>>
+    template <std::predicate<const T&> Pred>
     locked_type wait(Pred&& pred)
     {
-        locked_type lockedValue = lockable_type::lock();
-        std::unique_lock lock(lockable_type::mtx, std::adopt_lock);
-
-        while (!std::invoke(pred, lockedValue)) { cv.wait(lock); }
-
-        lock.release();
-        return lockedValue;
+        std::unique_lock lock(lockable_type::mtx);
+        while (!std::invoke(pred, lockable_type::value)) { cv.wait(lock); }
+        return {lockable_type::value, std::move(lock)};
     }
 
     void notify_one() { cv.notify_one(); }
